@@ -24,16 +24,13 @@ library(meta)
 library(metafor)
 library(patchwork)
 library(ggspatial)
-
-dir.create("Figures", showWarnings = FALSE)
-dir.create("output_tables", showWarnings = FALSE)
 ```
 
 # Site Map
 ```{r}
-fl_shore_path <- "../../../../../Florida_Shoreline_(1_to_12%2C000_Scale)/Florida_Shoreline_(1_to_12%2C000_Scale).shp"
+fl_shore_path <- "Florida_Shoreline_(1_to_12%2C000_Scale)/Florida_Shoreline_(1_to_12%2C000_Scale).shp"
 
-site_map <- read_xlsx("raw_data/site_coords.xlsx")
+site_map <- read_xlsx("data_clean/site_coords.xlsx")
 
 if (file.exists(fl_shore_path)) {
   fl_shore <- st_read(fl_shore_path, quiet = TRUE) %>% st_transform(crs = 4326)
