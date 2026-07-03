@@ -1,0 +1,33 @@
+# ------------------------------------------------------------------
+# Raw data
+# Excluded from version control (large files / not redistributable).
+# See README.md for instructions on obtaining these files and running
+# 01_clean_data.R to regenerate data_clean/.
+# ------------------------------------------------------------------
+raw_data/
+Florida_Shoreline_(1_to_12%2C000_Scale)/
+01_clean_data.R
+
+# ------------------------------------------------------------------
+# R / RStudio artifacts
+# ------------------------------------------------------------------
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+*.Rproj
+
+# ------------------------------------------------------------------
+# Knitr / R Markdown build artifacts
+# ------------------------------------------------------------------
+*_cache/
+*_files/
+*.utf8.md
+*.knit.md
+
+# ------------------------------------------------------------------
+# OS / editor cruft
+# ------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+*.swp

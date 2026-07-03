@@ -1,0 +1,731 @@
+---
+title: "CBRUVS Manuscript"
+author: "Allyson"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Setup
+```{r setup}
+library(tidyverse)
+library(readxl)
+library(RColorBrewer)
+library(patchwork)
+library(scales)
+library(sf)
+library(ggrepel)
+library(dunn.test)
+library(car)
+library(MASS)
+library(survival)
+library(plotrix)
+library(ggh4x)
+library(meta)
+library(metafor)
+library(patchwork)
+library(ggspatial)
+
+dir.create("Figures", showWarnings = FALSE)
+dir.create("output_tables", showWarnings = FALSE)
+```
+
+# Site Map
+```{r}
+fl_shore_path <- "../../../../../Florida_Shoreline_(1_to_12%2C000_Scale)/Florida_Shoreline_(1_to_12%2C000_Scale).shp"
+
+site_map <- read_xlsx("raw_data/site_coords.xlsx")
+
+if (file.exists(fl_shore_path)) {
+  fl_shore <- st_read(fl_shore_path, quiet = TRUE) %>% st_transform(crs = 4326)
+  has_shore <- TRUE
+} else {
+  message("Shoreline shapefile not found.")
+  has_shore <- FALSE
+}
+
+map_theme <- theme_bw() +
+  theme(panel.grid = element_blank(), panel.background = element_rect(fill = "aliceblue"),
+        axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+        plot.title  = element_text(size = 11, face = "bold", hjust = 0.5))
+
+make_map <- function(data, title, xlim, ylim) {
+  p <- ggplot()
+  if (has_shore) p <- p +
+    geom_sf(data = fl_shore, fill = "lightgray", color = "darkgray", linewidth = 0.15)
+  p +
+    geom_point(data = data,
+               aes(x = Longitude, y = Latitude, fill = SiteName),
+               shape = 21, colour = "black", stroke = 0.4, alpha = 0.9) +
+    geom_label_repel(data = data,
+                     aes(x = Longitude, y = Latitude, label = SiteName),
+                     size = 2.3, box.padding = 0.6, point.padding = 0.3,
+                     max.overlaps = Inf, force = 12,
+                     segment.size = 0.3, segment.color = "grey40",
+                     label.padding = unit(0.15, "lines"), min.segment.length = 0) +
+    coord_sf(xlim = xlim, ylim = ylim) +
+    annotation_north_arrow(location = "tr", style = north_arrow_fancy_orienteering()) +
+    annotation_scale(location = "bl") +
+    labs(title = title, x = "Longitude", y = "Latitude") +
+    map_theme +
+    guides(size = guide_legend(override.aes = list(shape = 21, fill = "gray60"))) 
+}
+
+miami_map <- site_map %>%
+  filter(Latitude >= 25.5 & Latitude <= 25.85, Longitude >= -80.25 & Longitude <= -79.95)
+
+p5b <- make_map(miami_map, "C-BRUVS Deployments and In Situ Coral Nursery",
+                xlim = c(-80.25, -79.95), ylim = c(25.5, 25.85))
+
+ggsave("Figures/UM_Fig5_Map.pdf", p5_combined, width = 16, height = 9)
+```
+
+
+# Common-name lookup (used for every panel)
+```{r common-names}
+# Single source of truth for scientific -> common name, so all 4 panels stay
+# consistent. Add new species here if they show up elsewhere.
+common_names <- c(
+  "Sparisoma aurofrenatum" = "Redband parrotfish",
+  "Sparisoma viride"       = "Stoplight parrotfish",
+  "Sparisoma rubripinne"   = "Yellowtail parrotfish",
+  "Sparisoma chrysopterum" = "Redtail parrotfish",
+  "Scarus iseri"           = "Striped parrotfish",
+  "Scarus taeniopterus"    = "Princess parrotfish",
+  "Scarus vetula"          = "Queen parrotfish",
+  "Scarus guacamaia"       = "Rainbow parrotfish",
+  "Scarus coelestinus"     = "Midnight parrotfish",
+  "Scarus coeruleus"       = "Blue parrotfish",
+  "Chaetodon capistratus"  = "Foureye butterflyfish",
+  "Chaetodon striatus"     = "Banded butterflyfish",
+  "Chaetodon ocellatus"    = "Spotfin butterflyfish",
+  "Stegastes diencaeus"    = "Longfin damselfish",
+  "Stegastes planifrons"   = "Threespot damselfish",
+  "Acanthurus bahianus"    = "Ocean surgeonfish",
+  "Acanthurus coeruleus"   = "Blue tang",
+  "Acanthurus chirurgus"   = "Doctorfish",
+  "Acanthurus sp."         = "Surgeonfish (unidentified)"
+)
+
+to_common <- function(x) {
+  out <- common_names[x]
+  ifelse(is.na(out), x, out)  # fall back to original if not in lookup
+}
+```
+
+# Load clean data
+
+# All data cleaning (standardizing species names, fixing typos, converting
+# coral codes to scientific names, correcting known data-entry errors, etc.)
+# is done once in 01_clean_data.R and documented there. This script reads
+# the resulting tidy CSVs directly.
+```{r load-data}
+CBRUV_updated <- read_csv("data_clean/CBRUVS_bites_clean.csv", show_col_types = FALSE)
+RVC_Fish_Survey <- read_csv("data_clean/RVC_fish_survey_clean.csv", show_col_types = FALSE)
+PT1_clean <- read_csv("data_clean/PT1_coral_fragments_clean.csv", show_col_types = FALSE)
+
+corallivore_species <- c("Sparisoma aurofrenatum", "Sparisoma viride", "Chaetodon capistratus")
+
+parrotfish_corallivore_species <- c("Sparisoma aurofrenatum", "Sparisoma viride")
+
+corallivore_species_rvc <- c(corallivore_species,
+                              "Scarus vetula", "Scarus guacamaia",
+                               "Scarus taeniopterus")
+
+species_colors <- setNames(
+  RColorBrewer::brewer.pal(7, "Set2"),
+  c("Redband parrotfish", "Stoplight parrotfish", "Foureye butterflyfish",
+    "Queen parrotfish", "Rainbow parrotfish", "Princess parrotfish", "Striped parrotfish")
+)
+
+fragment_availability_day0 <- PT1_clean %>%
+  filter(Days == 0) %>%
+  count(Coral, name = "available")
+
+fragment_days_tracked <- PT1_clean %>%
+  filter(Days %in% c(0, 1, 2, 7, 14)) %>%
+  filter(!is.na(Mortality)) %>%
+  count(Tray, Coral, name = "fragment_days")
+```
+
+
+### Total number of bites
+```{r}
+video_duration_by_day <- CBRUV_updated %>%
+  distinct(Tag, Days, Video, video_duration_seconds) %>%
+  group_by(Days) %>%
+  summarise(total_hours = sum(video_duration_seconds, na.rm = TRUE) / 3600, .groups = "drop")
+
+video_duration_by_day_tray <- CBRUV_updated %>%
+  distinct(Tag, Days, Video, video_duration_seconds) %>%
+  group_by(Days,Tag) %>%
+  summarise(total_hours = sum(video_duration_seconds, na.rm = TRUE) / 3600, .groups = "drop")
+
+panel_A_data <- CBRUV_updated %>%
+  filter(Fish %in% corallivore_species) %>%
+  group_by(Days, Fish) %>%
+  summarise(Bites = sum(Bites), .groups = "drop") %>%
+  mutate(Fish_common = to_common(Fish))
+
+panel_A_data %>%
+  group_by(Fish_common) %>%
+  summarise(Bites = sum(Bites), .groups = "drop") %>%
+  mutate(percent = 100 * Bites / sum(Bites))
+
+# bar-top position + duration label for each day, used by geom_text below
+total_bites_by_day <- panel_A_data %>%
+  group_by(Days) %>%
+  summarise(total_bites = sum(Bites), .groups = "drop") %>%
+  left_join(video_duration_by_day, by = "Days")
+
+fig2A <- panel_A_data %>%
+  ggplot(aes(x = factor(Days), y = Bites, fill = Fish_common)) +
+  geom_col(color = "black", width = 0.7) +
+  geom_text(
+    data = total_bites_by_day,
+    aes(x = factor(Days), y = total_bites, label = paste0(round(total_hours, 1), " hr")),
+    inherit.aes = FALSE, vjust = -0.5, size = 3
+  ) +
+  scale_fill_manual(values = species_colors, name = "Fish species") +
+  labs(x = "Day", y = "Total bites") +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank()) +
+  scale_y_continuous(expand = c(0, 0), limits = c(0, max(total_bites_by_day$total_bites) * 1.1))
+```
+
+
+
+### Mean C-BRUVS bite rate over time
+```{r}
+video_duration_lookup <- CBRUV_updated %>%
+  distinct(Tag, Days, Video, video_duration_seconds)
+
+tag_day_rates <- CBRUV_updated %>%
+  group_by(Tag, Days, Fish) %>%
+  summarise(total_bites = sum(Bites, na.rm = TRUE), .groups = "drop") %>%
+  left_join(
+    video_duration_lookup %>%
+      group_by(Tag, Days) %>%
+      summarise(total_minutes = sum(video_duration_seconds, na.rm = TRUE) / 60, .groups = "drop"),
+    by = c("Tag", "Days")
+  ) %>%
+  mutate(bite_rate_per_min = total_bites / total_minutes)
+
+panel_B_data <- tag_day_rates %>%
+  filter(Fish %in% corallivore_species) %>%
+  group_by(Fish, Days) %>%
+  summarise(
+    mean_bite_rate_per_min = mean(bite_rate_per_min, na.rm = TRUE),
+    se_bite_rate_per_min = sd(bite_rate_per_min, na.rm = TRUE) / sqrt(n()),
+    .groups = "drop"
+  ) %>%
+  mutate(Fish_common = to_common(Fish))
+
+fig2B <- panel_B_data %>%
+  ggplot(aes(x = factor(Days), y = mean_bite_rate_per_min, color = Fish_common)) +
+  geom_point(position = position_dodge(width = 0.5), size = 2) +
+  geom_errorbar(aes(ymin = mean_bite_rate_per_min - se_bite_rate_per_min,
+                     ymax = mean_bite_rate_per_min + se_bite_rate_per_min),
+                width = 0.4, linewidth = 0.8, position = position_dodge(width = 0.5)) +
+  scale_color_manual(values = species_colors, name = "Fish species") +
+  labs(x = "Day", y = "Mean bite rate (bites/min)") +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank())
+```
+
+
+### Parrotfish age-phase composition (Initial vs Terminal) — stat only, not a figure panel
+```{r agephase-stat}
+agephase_stat <- CBRUV_updated %>%
+  filter(Fish %in% parrotfish_corallivore_species, AgePhase %in% c("Initial", "Terminal", "Juvenile")) %>%
+  count(AgePhase, Fish, name = "n") %>%
+  mutate(percent = 100 * n / sum(n))
+
+agephase_stat
+```
+
+### Parrotfish size class vs. total bites
+```{r}
+panel_C_data <- CBRUV_updated %>%
+  filter(Fish %in% parrotfish_corallivore_species) %>%
+  mutate(
+    size_class = cut(Length,
+                      breaks = c(0, 5, 10, 15, 20, Inf),
+                      labels = c("<5 cm", "5-10 cm", "10-15 cm", "15-20 cm", ">20 cm"),
+                      right = TRUE),
+    Fish_common = to_common(Fish)
+  ) %>%
+  filter(!is.na(size_class)) %>%
+  group_by(Tag, Fish_common, size_class) %>%
+  summarise(total_bites = sum(Bites), .groups = "drop") %>%
+  complete(Tag = unique(CBRUV_updated$Tag), Fish_common, size_class, fill = list(total_bites = 0)) %>%
+  group_by(Fish_common, size_class) %>%
+  summarise(
+    mean_bites = mean(total_bites, na.rm = TRUE),
+    se_bites = sd(total_bites, na.rm = TRUE) / sqrt(n()),
+    .groups = "drop"
+  )
+
+fig2C <- panel_C_data %>%
+  ggplot(aes(x = size_class, y = mean_bites, color = Fish_common)) +
+  geom_point(position = position_dodge(width = 0.5), size = 2) +
+  geom_errorbar(aes(ymin = pmax(mean_bites - se_bites, 0), ymax = mean_bites + se_bites),
+                width = 0.4, linewidth = 0.8, position = position_dodge(width = 0.5)) +
+  scale_color_manual(values = species_colors, name = "Fish species") +
+  labs(x = "Size class", y = "Mean bites per C-BRUVS (+/- SE)") +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank())
+```
+
+### RVC fish observed by day, Days 0–14
+```{r}
+rvc_fish <- RVC_Fish_Survey %>%
+  filter(Fish %in% corallivore_species_rvc) %>%
+  mutate(Fish_common = to_common(Fish)) %>%
+  group_by(Days, Fish_common) %>%
+  summarise(N = sum(N), .groups = "drop")
+
+fig2D <- rvc_fish %>%
+  ggplot(aes(x = Fish_common, y = N, fill = Fish_common)) +
+  geom_col(color = "black", width = 0.7) +
+  facet_wrap(~ Days, nrow = 1, labeller = labeller(Days = function(x) paste("Day", x)), scales = "free_x") +
+  scale_fill_manual(values = species_colors, name = "Fish species") +
+  labs(x = NULL, y = "Number of individuals observed (Diver survey)") +
+  theme_bw() +
+  theme(
+    panel.grid.minor = element_blank(),
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 9),
+    legend.position = "right"
+  )+
+  scale_y_continuous(expand = c(0, 0), limits = c(0, max(rvc_fish$N) * 1.1))
+```
+
+### Combine into Figure 2
+```{r fig2-combined, fig.width=12, fig.height=12}
+figure2 <- (fig2A + fig2C) / fig2B / fig2D +
+  plot_annotation(tag_levels = "A")
+
+figure2
+
+ggsave("Figures/Figure2_combined.png", figure2, width = 12, height = 12, dpi = 300)
+ggsave("Figures/Figure2_combined.pdf", figure2, width = 12, height = 12)
+```
+
+# Figure 3
+
+### Cumulative predation prevalence
+```{r}
+pooled_prevalence <- PT1_clean %>%
+  filter(Species != "APAL", Species != "ACER") %>%  # exclude acroporids, consistent with the GLMM
+  mutate(
+    Predation = if_else(Tray == "B091" & Days == 14 & UniqueCode == 127, "N", Predation),
+    Cumulative = if_else(Tray == "B091" & Days == 14 & UniqueCode == 127, "N", Cumulative)
+  ) %>% 
+  group_by(Days, Cumulative) %>% 
+  summarise(count = n()) %>% 
+  mutate(Cumulative = ifelse(
+    cumsum(ifelse(Cumulative == "Y" & !is.na(Cumulative) & Cumulative != "", 1, 0)) > 0, 
+    "1", 
+    "0")) %>% 
+  pivot_wider(names_from = "Cumulative", values_from = "count") %>% 
+  ungroup() %>% 
+  mutate(across(c(`0`, `1`), ~ replace_na(.x, 0))) %>% 
+  mutate(total = `0` + `1`) %>% 
+  mutate(proportion_predation = `1`/total)
+
+p1<-PT1_clean %>% 
+  filter(Species != "APAL" & Species != "ACER") %>% 
+  filter(!(Days == 0 & Predation == "Y")) %>%  # 3 corals were reported with predation
+  group_by(Days, Cumulative, Coral) %>% 
+  summarise(count = n()) %>% 
+  mutate(Cumulative = ifelse(
+    cumsum(ifelse(Cumulative == "Y" & !is.na(Cumulative) & Cumulative != "", 1, 0)) > 0, 
+    "1", 
+    "0")) %>% 
+  pivot_wider(names_from = "Cumulative", values_from = "count") %>% 
+  ungroup() %>% 
+  mutate(across(c(`0`, `1`), ~ replace_na(.x, 0))) %>% 
+  mutate(total = `0` + `1`) %>% 
+  mutate(proportion_predation = `1`/total) %>% 
+  ggplot(., aes(x=Days, y=proportion_predation, color = Coral)) +
+  geom_point(alpha = 0.15) +
+  geom_line(data = pooled_prevalence, aes(x = Days, y = proportion_predation),
+            inherit.aes = FALSE, color = "black", linewidth = 1.1, alpha = 0.7) +
+  geom_point(data = pooled_prevalence, aes(x = Days, y = proportion_predation),
+             inherit.aes = FALSE, color = "black", size = 2, alpha = 0.5) +
+  geom_line() +
+  theme_bw() +
+  ylab("Cumulative Predation Prevalence") +
+  xlab("Days Since Deployment") +
+  theme(
+    legend.text = element_text(face = "italic"),
+    legend.position = "none"
+  ) + scale_x_continuous(breaks = c(0, 1, 2, 7, 14, 21, 28, 35, 42),
+                      limits = c(0, 42),
+                      expand = c(0, 0))
+  
+
+p1
+#ggsave("Cumulative_Predation_Prevalence_allcorals.pdf", width = 8, height = 6)
+```
+
+
+### Predation intensity (tissue mortality) per coral species, accounting for dropout
+```{r}
+fragment_trajectories <- PT1_clean %>%
+filter(Species != "APAL" & Species != "ACER") %>% 
+  mutate(Mortality = as.numeric(Mortality)) %>%
+  filter(!is.na(Mortality)) %>%
+  group_by(Tray, UniqueCode, Coral) %>%
+  summarise(
+    ever_predated = any(Predation == "Y", na.rm = TRUE),
+    max_mortality = if_else(ever_predated, max(Mortality), 0),
+    reached_100 = if_else(ever_predated, any(Mortality == 100), FALSE),
+    reached_30_cutoff = if_else(ever_predated, max_mortality >= 30, FALSE),
+    day_of_endpoint = if_else(reached_100 | reached_30_cutoff, max(Days), NA_real_),
+    .groups = "drop"
+  )
+
+n_deployed <- PT1_clean %>%
+  filter(!is.na(Mortality)) %>%
+  distinct(Tray, UniqueCode, Coral) %>%
+  count(Coral, name = "n_fragments_deployed")
+
+panel_X_data <- fragment_trajectories %>%
+  group_by(Coral) %>%
+  summarise(
+    n_predated = sum(ever_predated),
+    mean_max_mortality = mean(max_mortality[ever_predated]),
+    se_max_mortality = sd(max_mortality[ever_predated]) / sqrt(sum(ever_predated)),
+    pct_died_100 = 100 * mean(reached_100[ever_predated]),
+    pct_censored_30 = 100 * mean(reached_30_cutoff[ever_predated]),
+    mean_day_to_endpoint = mean(day_of_endpoint, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  complete(Coral = n_deployed$Coral,
+           fill = list(n_predated = 0, mean_max_mortality = 0, se_max_mortality = 0,
+                       pct_died_100 = 0, pct_censored_30 = 0, mean_day_to_endpoint = NA_real_)) %>%
+  left_join(n_deployed, by = "Coral") %>%
+  mutate(pct_predated = round(100 * n_predated / n_fragments_deployed, 1)) %>%
+  relocate(n_fragments_deployed, n_predated, pct_predated, .after = Coral) %>%
+  arrange(desc(mean_max_mortality))
+
+write_csv(panel_X_data, "output_tables/Figure3_predation_data.csv")
+
+p2 <- panel_X_data %>%
+  filter(Coral != "Acropora palmata" & Coral != "Acropora cervicornis") %>%
+  ggplot(aes(x = fct_reorder(Coral, mean_max_mortality), y = mean_max_mortality, fill = Coral)) +
+  geom_col(color = "black", width = 0.7) +
+  geom_errorbar(aes(ymin = mean_max_mortality - se_max_mortality,
+                     ymax = mean_max_mortality + se_max_mortality),
+                width = 0.3) +
+  labs(x = "Coral species", y = "Mean maximum tissue mortality (%, +/- SE)") +
+  coord_flip() +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank(), axis.text.y = element_text(face = "italic"), legend.position = "none") +
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 60)) 
+
+p2
+```
+
+```{r}
+cowplot::plot_grid(p1, p2, ncol = 2, labels = c("A", "B"), label_size = 12)
+ggsave("Figures/Figure3_predation.png", width = 12, height = 6, dpi = 300)
+```
+
+
+# Figure 4
+
+### Fish x coral selectivity index, day- and tray-matched, with significance test
+```{r}
+# alpha separately per Tray x Day (replicate = Tray-Day,same logic as Burkepile et al. 2019's per-individual-follow electivity values), then running a one-sample t-test against 1/n_corals for each cell, matching their statistical approach (Manly's alpha + one-sample t-test).
+
+availability_by_tray_day <- PT1_clean %>%
+  filter(!is.na(Mortality)) %>%  # still actively tracked as of this day
+  count(Tray, Days, Coral, name = "available")
+
+all_coral_species <- unique(PT1_clean$Coral)
+all_trays <- unique(PT1_clean$Tray)
+all_days_bruvs <- c(0, 1, 2, 7, 14)
+
+bites_by_tray_day <- CBRUV_updated %>%
+  filter(Fish %in% corallivore_species) %>%
+  group_by(Tag, Days, Fish, Coral) %>%
+  summarise(Bites = sum(Bites), .groups = "drop") %>%
+  rename(Tray = Tag) %>%
+  complete(Tray = all_trays, Days = all_days_bruvs, Fish = corallivore_species,
+           Coral = all_coral_species, fill = list(Bites = 0))
+
+alpha_by_tray_day <- bites_by_tray_day %>%
+  left_join(availability_by_tray_day, by = c("Tray", "Days", "Coral")) %>%
+  mutate(available = replace_na(available, 0)) %>%
+  group_by(Tray, Days, Fish) %>%
+  filter(sum(Bites) > 0, sum(available) > 0) %>%  # need real bites and real availability to compute a composition
+  mutate(
+    p_bite = Bites / sum(Bites),
+    p_avail = available / sum(available),
+    raw_selectivity = if_else(p_avail > 0, p_bite / p_avail, NA_real_),
+    alpha = raw_selectivity / sum(raw_selectivity, na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+n_corals_in_panel <- length(all_coral_species)
+no_preference_value <- 1 / n_corals_in_panel
+
+# One-sample t-test per Fish x Coral cell against the no-preference value
+panel_4_data <- alpha_by_tray_day %>%
+  filter(!is.na(alpha)) %>%
+  group_by(Fish, Coral) %>%
+  summarise(
+    mean_alpha = mean(alpha),
+    n_replicates = n(),
+    p_value = if (n() >= 2 && sd(alpha) > 0) t.test(alpha, mu = no_preference_value)$p.value else NA_real_,
+    .groups = "drop"
+  ) %>%
+  mutate(
+    significant = !is.na(p_value) & p_value < 0.05,
+    Fish_common = to_common(Fish),
+    Fish_common = factor(Fish_common, levels = sort(unique(Fish_common), decreasing = TRUE))
+  )
+
+panel_4_data %>% 
+  arrange(Fish_common, desc(mean_alpha)) %>% 
+  drop_na() %>%
+  write_csv("output_tables/selectivity_data.csv")
+
+figure4 <- panel_4_data %>%
+  ggplot(aes(x = Coral, y = Fish_common, fill = mean_alpha)) +
+  geom_tile(color = "black", width = 0.9) +
+  geom_text(aes(label = if_else(significant, "*", "")), size = 5, vjust = 0.75) +
+  scale_fill_gradient2(
+    low = "firebrick", mid = "white", high = "darkblue",
+    midpoint = no_preference_value,
+    name = "Selectivity\n(mean alpha)"
+  ) +
+  labs(x = "Coral species", y = NULL) + 
+       #caption = paste0("White ~ ", round(no_preference_value, 3), " (no preference); blue = preferred; red = avoided\n",
+                        # "* = one-sample t-test vs. no-preference, p < 0.05 (n varies by cell -- see printed table)")) +
+  theme_bw() +
+  theme(
+    panel.grid.minor = element_blank(),
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, face = "italic", size = 9)
+  )
+
+figure4
+
+ggsave("Figures/Figure4_selectivity.png", figure4, width = 8, height = 5, dpi = 300)
+ggsave("Figures/Figure4_selectivity.pdf", figure4, width = 8, height = 5)
+```
+
+# Figure 5
+
+### Linking individual fish bites to tissue loss at the next monitored timepoint
+```{r fig5}
+# linking bites from C-BRUVS to the same fragment's change in tissue mortality between day of bite and the next monitoring time point
+
+next_day_lookup <- c(`0` = 1, `1` = 2, `2` = 7, `7` = 14, `14`=21)
+
+genotype_fixes <- c("PLCI04" = "PCLI04", "OFAV5" = "OFAV05", "PSTRI01" = "PSTR01")
+
+ambiguous_genotype_trays <- PT1_clean %>%
+  filter(Days == 0) %>%
+  count(Tray, Genotype) %>%
+  filter(n > 1) %>%
+  dplyr::select(Tray, Genotype)
+
+bites_before_ambiguous_exclusion <- CBRUV_updated %>%
+  filter(Fish %in% corallivore_species) %>%
+  mutate(Genotype = if_else(Genotype %in% names(genotype_fixes), genotype_fixes[Genotype], Genotype)) %>%
+  rename(Tray = Tag)
+n_ambiguous_excluded <- bites_before_ambiguous_exclusion %>%
+  semi_join(ambiguous_genotype_trays, by = c("Tray", "Genotype")) %>%
+  nrow()
+
+bite_fragment_link <- bites_before_ambiguous_exclusion %>%
+  anti_join(ambiguous_genotype_trays, by = c("Tray", "Genotype")) %>%
+  group_by(Tray, Days, Genotype, Fish) %>%
+  summarise(total_bites = sum(Bites), .groups = "drop") %>%
+  mutate(next_day = next_day_lookup[as.character(Days)])
+
+n_unmatched <- bite_fragment_link %>%
+  anti_join(PT1_clean %>% distinct(Tray, Genotype), by = c("Tray", "Genotype")) %>%
+  nrow()
+cat("Bite records dropped due to no genotype match in PT1:", n_unmatched, "of", nrow(bite_fragment_link), "\n")
+cat("Bite records dropped due to ambiguous duplicate-genotype-within-tray fragments:", n_ambiguous_excluded,
+    "of", nrow(bites_before_ambiguous_exclusion), "\n")
+
+mortality_lookup <- PT1_clean %>%
+  mutate(Mortality = as.numeric(Mortality)) %>%
+  dplyr::select(Tray, Genotype, Days, Mortality)
+
+panel_5_data <- bite_fragment_link %>%
+  inner_join(mortality_lookup, by = c("Tray", "Genotype", "Days")) %>%
+  rename(mortality_at_bite = Mortality) %>%
+  inner_join(
+    mortality_lookup %>% rename(next_day = Days, mortality_at_next = Mortality),
+    by = c("Tray", "Genotype", "next_day")
+  ) %>%
+  filter(!is.na(mortality_at_bite), !is.na(mortality_at_next)) %>%
+  mutate(Fish_common = to_common(Fish))
+
+#does bite count predict the outcome?
+panel_5_data %>%
+  group_by(Fish_common) %>%
+  group_modify(~ {
+    if (nrow(.x) < 4) return(tibble(bites_coef = NA, bites_p = NA, n = nrow(.x)))
+    m <- lm(mortality_at_next ~ total_bites + mortality_at_bite, data = .x)
+    s <- summary(m)$coefficients
+    tibble(bites_coef = s["total_bites", "Estimate"], bites_p = s["total_bites", "Pr(>|t|)"], n = nrow(.x))
+  }) %>%
+  print()
+
+panel_5_data %>%
+  group_by(Fish_common) %>%
+  summarise(n_bite_events = n(), mean_bites_per_event = mean(total_bites), .groups = "drop")  # for Results
+
+figure5 <- panel_5_data %>%
+  ggplot(aes(x = total_bites, y = mortality_at_next, color = mortality_at_bite)) +
+  geom_point(alpha = 0.7, size = 2) +
+  geom_smooth(method = "lm", se = TRUE, color = "black", linewidth = 0.6) +
+  facet_wrap(~Fish_common, scales = "free_x") +
+  scale_color_viridis_c(name = "Tissue mortality\nat time of bite (%)") +
+  labs(x = "Bites recorded on C-BRUVS (this timepoint)",
+       y = "Tissue mortality at next monitored timepoint (%)") +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank())
+
+figure5
+
+ggsave("Figures/Figure5_bite_outcome.png", figure5, width = 11, height = 4.5, dpi = 300)
+ggsave("Figures/Figure5_bite_outcome.pdf", figure5, width = 11, height = 4.5)
+
+
+# linear model with covariate: mortality_at_next ~ total_bites + mortality_at_bite
+# Starting tissue loss included as covariate to avoid the ceiling-effect
+model_results <- panel_5_data %>%
+  group_by(Fish_common) %>%
+  group_modify(~ {
+    if (nrow(.x) < 4) return(tibble(
+      n = nrow(.x), bites_coef = NA, bites_se = NA,
+      bites_t = NA, bites_p = NA, r_squared = NA, model_p = NA))
+    m <- lm(mortality_at_next ~ total_bites + mortality_at_bite, data = .x)
+    s <- summary(m)
+    coefs <- s$coefficients
+    tibble(
+      n = nrow(.x),
+      bites_coef  = coefs["total_bites", "Estimate"],
+      bites_se    = coefs["total_bites", "Std. Error"],
+      bites_t     = coefs["total_bites", "t value"],
+      bites_p     = coefs["total_bites", "Pr(>|t|)"],
+      r_squared   = s$r.squared,
+      model_p     = pf(s$fstatistic[1], s$fstatistic[2], s$fstatistic[3], lower.tail = FALSE)
+    )
+  })
+
+print(model_results, width = Inf)
+```
+
+
+# summary tables for manuscript
+```{r}
+fragment_bites <- CBRUV_updated %>%
+   filter(Coral != "Acropora palmata" & Coral != "Acropora cervicornis") %>%
+  group_by(Tag, Genotype, Coral) %>%
+  summarise(total_bites_this_fragment = sum(Bites), .groups = "drop")
+
+grand_total_bites <- sum(fragment_bites$total_bites_this_fragment) # 460 total bites
+
+species_bite_summary <- fragment_bites %>%
+  filter(Coral != "Acropora palmata" & Coral != "Acropora cervicornis") %>%
+  group_by(Coral) %>%
+  summarise(
+    n_fragments_bitten = n(),
+    total_bites = sum(total_bites_this_fragment),
+    mean_bites_per_bitten_fragment = mean(total_bites_this_fragment),
+    sd_bites_per_bitten_fragment = sd(total_bites_this_fragment),
+    .groups = "drop"
+  ) %>%
+  mutate(pct_of_total_bites = round(100 * total_bites / grand_total_bites, 2)) %>%
+  left_join(fragment_availability_day0, by = "Coral") %>%
+  mutate(
+    pct_fragments_bitten = round(100 * n_fragments_bitten / available, 2),
+    bites_display = sprintf("%.2f (%.2f)", mean_bites_per_bitten_fragment, sd_bites_per_bitten_fragment)
+  ) 
+
+write_csv(species_bite_summary, "output_tables/fragment_bites_summary.csv")
+```
+
+
+# summary of fish (C-BRUVS and RVC)
+```{r}
+RVC_Fish_Survey %>%
+  filter(Fish %in% corallivore_species_rvc) %>%
+  mutate(Fish_common = to_common(Fish))  %>% 
+  dplyr::select(Days, N, Fish_common, `Average Size`, Min, Max) %>% 
+  rename(N_RVC = N, Average_Size_RVC = `Average Size`) %>% 
+  mutate(Days = as.double(Days)) %>% 
+  mutate(
+  Average_Size_RVC = as.numeric(Average_Size_RVC),
+  Min = as.numeric(Min),
+  Max = as.numeric(Max),
+  size_display_RVC = if_else(
+    is.na(Min) | is.na(Max) | Min == Max,
+    sprintf("%.0f", Average_Size_RVC),
+    sprintf("%.0f (%.0f–%.0f)", Average_Size_RVC, Min, Max)
+  )
+) -> RVC_Fish_Survey_subset
+
+unique(RVC_Fish_Survey_subset$Fish_common)
+
+CBRUV_updated %>%
+  filter(Fish %in% corallivore_species_rvc) %>%
+  mutate(Fish_common = to_common(Fish)) %>% 
+  dplyr::select(Fish_common, Days, Tag, Length, FishCount, AgePhase) %>%
+  distinct() %>% 
+  group_by(Days, Fish_common) %>% 
+  summarise(Average_Size_CBRUV = round(mean(Length), 1),
+            overall_min_size = round(min(Length), 0),
+            overall_max_size = round(max(Length), 0),
+            sd_length = round(sd(Length, na.rm = TRUE),1),
+            N_CBRUVS = n()) %>% 
+  dplyr::select(Days, Fish_common, N_CBRUVS, Average_Size_CBRUV, overall_min_size, overall_max_size)  %>% 
+  mutate(size_display_CBRUVS = sprintf("%.1f (%.0f–%.0f)", 
+                               Average_Size_CBRUV, 
+                               overall_min_size, 
+                               overall_max_size))  -> CBRUV_Fish_Summary
+
+full_join(RVC_Fish_Survey_subset, CBRUV_Fish_Summary, by = c("Days", "Fish_common")) %>% 
+  filter(Days <= 14) %>% 
+  write_csv("output_tables/CBRUV_RVC_Fish_Comparison.csv")
+```
+
+
+# GLMM for Cumulative Predation Prevalence
+```{r}
+PT1_clean %>% 
+  filter(Species != "APAL" & Species != "ACER") %>% 
+  filter(!Days == 0) %>%  # remove day 0 since zero predation
+  dplyr::select(Days, Tray, Genotype, Coral, Cumulative) %>% 
+  distinct() %>% 
+  mutate(Cumulative = case_when(Cumulative == "Y" ~ 1,
+                                Cumulative == "N" ~ 0)) %>% 
+  mutate(Days = as.factor(Days)) -> predation_stats
+
+glmm_predation <- glmmTMB::glmmTMB(Cumulative ~ Days + (1|Tray) + (1|Coral),
+      family = binomial(link = "logit"), 
+      data = predation_stats)
+
+summary(glmm_predation)
+
+Anova(glmm_predation, type = "II")
+
+library(emmeans)
+emm <- emmeans(glmm_predation, ~ Days)  # your actual days
+pairs(emm, adjust = "tukey", type = "response")
+summary(pairs(emm, adjust = "tukey", type = "response"), infer = TRUE)  # Adds confidence intervals
+res <- summary(pairs(emm, adjust = "tukey", type = "response"), infer = TRUE)
+as.data.frame(res)  # Shows all columns clearly
+
+write_csv(as.data.frame(res), "output_tables/GLMM_predation_posthoc.csv") 
+```
+
+
