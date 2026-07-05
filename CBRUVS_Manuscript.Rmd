@@ -73,7 +73,7 @@ miami_map <- site_map %>%
 p5b <- make_map(miami_map, "C-BRUVS Deployments and In Situ Coral Nursery",
                 xlim = c(-80.25, -79.95), ylim = c(25.5, 25.85))
 
-ggsave("Figures/UM_Fig5_Map.pdf", p5_combined, width = 16, height = 9)
+ggsave("Figures/Map.pdf", p5b, width = 16, height = 9)
 ```
 
 
@@ -84,23 +84,11 @@ ggsave("Figures/UM_Fig5_Map.pdf", p5_combined, width = 16, height = 9)
 common_names <- c(
   "Sparisoma aurofrenatum" = "Redband parrotfish",
   "Sparisoma viride"       = "Stoplight parrotfish",
-  "Sparisoma rubripinne"   = "Yellowtail parrotfish",
-  "Sparisoma chrysopterum" = "Redtail parrotfish",
-  "Scarus iseri"           = "Striped parrotfish",
   "Scarus taeniopterus"    = "Princess parrotfish",
   "Scarus vetula"          = "Queen parrotfish",
   "Scarus guacamaia"       = "Rainbow parrotfish",
   "Scarus coelestinus"     = "Midnight parrotfish",
-  "Scarus coeruleus"       = "Blue parrotfish",
-  "Chaetodon capistratus"  = "Foureye butterflyfish",
-  "Chaetodon striatus"     = "Banded butterflyfish",
-  "Chaetodon ocellatus"    = "Spotfin butterflyfish",
-  "Stegastes diencaeus"    = "Longfin damselfish",
-  "Stegastes planifrons"   = "Threespot damselfish",
-  "Acanthurus bahianus"    = "Ocean surgeonfish",
-  "Acanthurus coeruleus"   = "Blue tang",
-  "Acanthurus chirurgus"   = "Doctorfish",
-  "Acanthurus sp."         = "Surgeonfish (unidentified)"
+  "Chaetodon capistratus"  = "Foureye butterflyfish"
 )
 
 to_common <- function(x) {
@@ -109,12 +97,8 @@ to_common <- function(x) {
 }
 ```
 
-# Load clean data
+# Load data
 
-# All data cleaning (standardizing species names, fixing typos, converting
-# coral codes to scientific names, correcting known data-entry errors, etc.)
-# is done once in 01_clean_data.R and documented there. This script reads
-# the resulting tidy CSVs directly.
 ```{r load-data}
 CBRUV_updated <- read_csv("data_clean/CBRUVS_bites_clean.csv", show_col_types = FALSE)
 RVC_Fish_Survey <- read_csv("data_clean/RVC_fish_survey_clean.csv", show_col_types = FALSE)
@@ -126,7 +110,7 @@ parrotfish_corallivore_species <- c("Sparisoma aurofrenatum", "Sparisoma viride"
 
 corallivore_species_rvc <- c(corallivore_species,
                               "Scarus vetula", "Scarus guacamaia",
-                               "Scarus taeniopterus")
+                               "Scarus taeniopterus", "Sparisoma aurofrenatum", "Sparisoma viride", "Chaetodon capistratus")
 
 species_colors <- setNames(
   RColorBrewer::brewer.pal(7, "Set2"),
@@ -312,11 +296,7 @@ ggsave("Figures/Figure2_combined.pdf", figure2, width = 12, height = 12)
 ### Cumulative predation prevalence
 ```{r}
 pooled_prevalence <- PT1_clean %>%
-  filter(Species != "APAL", Species != "ACER") %>%  # exclude acroporids, consistent with the GLMM
-  mutate(
-    Predation = if_else(Tray == "B091" & Days == 14 & UniqueCode == 127, "N", Predation),
-    Cumulative = if_else(Tray == "B091" & Days == 14 & UniqueCode == 127, "N", Cumulative)
-  ) %>% 
+  filter(Species != "APAL", Species != "ACER") %>%  # exclude acroporids, consistent with the GLMM 
   group_by(Days, Cumulative) %>% 
   summarise(count = n()) %>% 
   mutate(Cumulative = ifelse(
@@ -329,9 +309,8 @@ pooled_prevalence <- PT1_clean %>%
   mutate(total = `0` + `1`) %>% 
   mutate(proportion_predation = `1`/total)
 
-p1<-PT1_clean %>% 
-  filter(Species != "APAL" & Species != "ACER") %>% 
-  filter(!(Days == 0 & Predation == "Y")) %>%  # 3 corals were reported with predation
+p1<-PT1_clean%>%
+  filter(Species != "APAL", Species != "ACER") %>% 
   group_by(Days, Cumulative, Coral) %>% 
   summarise(count = n()) %>% 
   mutate(Cumulative = ifelse(

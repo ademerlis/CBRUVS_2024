@@ -2330,7 +2330,6 @@ Days,Tray,Position,Species,Genotype,UniqueCode,Predation,Mortality,Cumulative,Co
 28,B096,G2,APAL,APAL02,259,NA,NA,N,Acropora palmata
 35,B096,G2,APAL,APAL02,259,NA,NA,N,Acropora palmata
 42,B096,G2,APAL,APAL02,259,N,0,N,Acropora palmata
-0,B096,G4,PSTR,PSTR06,260,Y,0,Y,Pseudodiploria strigosa
 1,B096,G4,PSTR,PSTR06,260,Y,5,Y,Pseudodiploria strigosa
 2,B096,G4,PSTR,PSTR06,260,NA,NA,Y,Pseudodiploria strigosa
 7,B096,G4,PSTR,PSTR06,260,Y,20,Y,Pseudodiploria strigosa
@@ -2411,7 +2410,6 @@ Days,Tray,Position,Species,Genotype,UniqueCode,Predation,Mortality,Cumulative,Co
 28,B097,A10,PSTR,PSTR01,268,NA,100,Y,Pseudodiploria strigosa
 35,B097,A10,PSTR,PSTR01,268,NA,100,Y,Pseudodiploria strigosa
 42,B097,A10,PSTR,PSTR01,268,NA,100,Y,Pseudodiploria strigosa
-0,B097,B1,MCAV,MCAV06,269,NA,0,N,Montastraea cavernosa
 1,B097,B1,MCAV,MCAV06,269,Y,5,Y,Montastraea cavernosa
 2,B097,B1,MCAV,MCAV06,269,NA,NA,Y,Montastraea cavernosa
 7,B097,B1,MCAV,MCAV06,269,Y,1,Y,Montastraea cavernosa
@@ -2888,7 +2886,6 @@ Days,Tray,Position,Species,Genotype,UniqueCode,Predation,Mortality,Cumulative,Co
 28,B099,C6,DLAB,DLAB02,321,NA,NA,N,Diploria labyrinthiformis
 35,B099,C6,DLAB,DLAB02,321,NA,NA,N,Diploria labyrinthiformis
 42,B099,C6,DLAB,DLAB02,321,NA,NA,N,Diploria labyrinthiformis
-0,B099,C8,PPOR,PPOR01,322,Y,50,Y,Porites porites
 1,B099,C8,PPOR,PPOR01,322,Y,50,Y,Porites porites
 2,B099,C8,PPOR,PPOR01,322,NA,50,Y,Porites porites
 7,B099,C8,PPOR,PPOR01,322,NA,50,Y,Porites porites
@@ -3068,7 +3065,6 @@ Days,Tray,Position,Species,Genotype,UniqueCode,Predation,Mortality,Cumulative,Co
 28,B100,B1,MCAV,MCAV07,341,NA,NA,Y,Montastraea cavernosa
 35,B100,B1,MCAV,MCAV07,341,NA,NA,Y,Montastraea cavernosa
 42,B100,B1,MCAV,MCAV07,341,Y,10,Y,Montastraea cavernosa
-0,B100,B3,PAST,PAST02,342,Y,2,Y,Porites astreoides
 1,B100,B3,PAST,PAST02,342,Y,10,Y,Porites astreoides
 2,B100,B3,PAST,PAST02,342,NA,NA,Y,Porites astreoides
 7,B100,B3,PAST,PAST02,342,Y,90,Y,Porites astreoides

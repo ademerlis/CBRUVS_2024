@@ -1,0 +1,8 @@
+Coral,n_fragments_bitten,total_bites,mean_bites_per_bitten_fragment,sd_bites_per_bitten_fragment,pct_of_total_bites,available,pct_fragments_bitten,bites_display
+Diploria labyrinthiformis,8,26,3.25,2.815771906346718,5.8,30,26.67,3.25 (2.82)
+Montastraea cavernosa,15,72,4.8,4.491261356392942,16.07,44,34.09,4.80 (4.49)
+Orbicella faveolata,17,61,3.588235294117647,4.988221420624436,13.62,45,37.78,3.59 (4.99)
+Porites astreoides,14,34,2.4285714285714284,2.064881658530644,7.59,43,32.56,2.43 (2.06)
+Porites porites,5,17,3.4,4.277849927241488,3.79,14,35.71,3.40 (4.28)
+Pseudodiploria clivosa,20,136,6.8,6.126731763776113,30.36,46,43.48,6.80 (6.13)
+Pseudodiploria strigosa,16,102,6.375,5.942782737629457,22.77,44,36.36,6.38 (5.94)

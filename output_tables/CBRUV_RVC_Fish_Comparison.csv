@@ -1,0 +1,26 @@
+Days,N_RVC,Fish_common,Average_Size_RVC,Min,Max,size_display_RVC,N_CBRUVS,Average_Size_CBRUV,overall_min_size,overall_max_size,size_display_CBRUVS
+0,14,Redband parrotfish,25,20,30,25 (20–30),27,14.8,10,20,14.8 (10–20)
+0,6,Foureye butterflyfish,13,12,15,13 (12–15),6,15,15,15,15.0 (15–15)
+0,18,Princess parrotfish,8,5,25,8 (5–25),NA,NA,NA,NA,NA
+0,6,Stoplight parrotfish,4,4,40,4 (4–40),NA,NA,NA,NA,NA
+0,1,Rainbow parrotfish,35,NA,NA,35,NA,NA,NA,NA,NA
+0,1,Queen parrotfish,20,NA,NA,20,NA,NA,NA,NA,NA
+1,2,Foureye butterflyfish,15,10,15,15 (10–15),11,15,15,15,15.0 (15–15)
+1,12,Stoplight parrotfish,20,5,30,20 (5–30),NA,NA,NA,NA,NA
+1,4,Redband parrotfish,15,5,20,15 (5–20),21,12,4,17,12.0 (4–17)
+1,9,Princess parrotfish,20,5,30,20 (5–30),NA,NA,NA,NA,NA
+1,1,Queen parrotfish,35,NA,NA,35,NA,NA,NA,NA,NA
+2,18,Redband parrotfish,25,20,30,25 (20–30),8,12.1,2,20,12.1 (2–20)
+2,3,Foureye butterflyfish,9,8,10,9 (8–10),7,15,15,15,15.0 (15–15)
+2,6,Stoplight parrotfish,7,5,30,7 (5–30),NA,NA,NA,NA,NA
+2,10,Princess parrotfish,6,5,20,6 (5–20),NA,NA,NA,NA,NA
+7,1,Queen parrotfish,23,NA,NA,23,NA,NA,NA,NA,NA
+7,1,Rainbow parrotfish,30,NA,NA,30,NA,NA,NA,NA,NA
+7,1,Redband parrotfish,20,NA,NA,20,4,4.5,2,12,4.5 (2–12)
+14,4,Foureye butterflyfish,15,10,20,15 (10–20),1,15,15,15,15.0 (15–15)
+14,7,Stoplight parrotfish,14,8,18,14 (8–18),2,22.5,20,25,22.5 (20–25)
+14,4,Princess parrotfish,15,8,18,15 (8–18),NA,NA,NA,NA,NA
+14,1,Redband parrotfish,16,NA,NA,16,2,2,2,2,2.0 (2–2)
+14,1,Queen parrotfish,24,NA,NA,24,NA,NA,NA,NA,NA
+7,NA,Foureye butterflyfish,NA,NA,NA,NA,3,15,15,15,15.0 (15–15)
+7,NA,Stoplight parrotfish,NA,NA,NA,NA,3,17.3,16,18,17.3 (16–18)
