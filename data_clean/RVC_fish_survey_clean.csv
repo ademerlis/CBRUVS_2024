@@ -1,43 +1,24 @@
-Days,N,Average Size,Min,Max,Fish
-0,14,25,20,30,Sparisoma aurofrenatum
-0,6,13,12,15,Chaetodon capistratus
-0,12,15,14,17,Acanthurus coeruleus
-0,18,8,5,25,Scarus taeniopterus
-0,6,4,4,40,Sparisoma viride
-0,11,8,5,30,Scarus iseri
-0,1,35,NA,NA,Scarus guacamaia
-0,1,20,NA,NA,Scarus vetula
-1,2,15,10,15,Chaetodon capistratus
-1,7,20,15,25,Acanthurus coeruleus
-1,12,20,5,30,Sparisoma viride
-1,9,20,5,30,Scarus iseri
-1,4,15,5,20,Sparisoma aurofrenatum
-1,9,20,5,30,Scarus taeniopterus
-1,1,35,NA,NA,Scarus vetula
-1,1,45,NA,NA,Scarus coelestinus
-2,6,18,5,25,Scarus iseri
-2,45,9,5,25,Sparisoma chrysopterum
-2,18,25,20,30,Sparisoma aurofrenatum
-2,6,15,12,18,Acanthurus coeruleus
-2,3,9,8,10,Chaetodon capistratus
-2,6,7,5,30,Sparisoma viride
-2,10,6,5,20,Scarus taeniopterus
-2,2,6,NA,NA,Sparisoma rubripinne
-7,9,15,10,18,Acanthurus bahianus
-7,11,15,3,18,Scarus iseri
-7,6,16,12,20,Acanthurus coeruleus
-7,4,15,13,18,Acanthurus chirurgus
-7,1,16,NA,NA,Chaetodon striatus
-7,1,23,NA,NA,Scarus vetula
-7,1,30,NA,NA,Scarus guacamaia
-7,1,20,NA,NA,Sparisoma aurofrenatum
-14,4,15,10,20,Chaetodon capistratus
-14,1,20,15,25,Sparisoma rubripinne
-14,7,14,8,18,Sparisoma viride
-14,3,17,14,20,Acanthurus coeruleus
-14,4,15,8,18,Scarus taeniopterus
-14,8,12,4,18,Scarus iseri
-14,2,17,15,20,Acanthurus bahianus
-14,1,18,NA,NA,Acanthurus chirurgus
-14,1,16,NA,NA,Sparisoma aurofrenatum
-14,1,24,NA,NA,Scarus vetula
+Phase 1/2?,Days,Common Name,N,Average Size,Min,Max,Fish,Days_clean
+1,0,Redband Parrotfish,14,25,20,30,Sparisoma aurofrenatum,0
+1,0,Four eye Butterflyfish,6,13,12,15,Chaetodon capistratus,0
+1,0,Princess Parrotfish,18,8,5,25,Scarus taeniopterus,0
+1,0,Stoplight Parrotfish,6,4,4,40,Sparisoma viride,0
+1,0,Rainbow Parrotfish,1,35,NA,NA,Scarus guacamaia,0
+1,0,Queen Parrotfish,1,20,NA,NA,Scarus vetula,0
+1,1,Four eye Butterflyfish,2,15,10,15,Chaetodon capistratus,1
+1,1,Stoplight Parrotfish,12,20,5,30,Sparisoma viride,1
+1,1,Redband Parrotfish,4,15,5,20,Sparisoma aurofrenatum,1
+1,1,Princess Parrotfish,9,20,5,30,Scarus taeniopterus,1
+1,1,Queen Parrotfish,1,35,NA,NA,Scarus vetula,1
+1,2,Redband Parrotfish,18,25,20,30,Sparisoma aurofrenatum,2
+1,2,Four eye Butterflyfish,3,9,8,10,Chaetodon capistratus,2
+1,2,Stoplight Parrotfish,6,7,5,30,Sparisoma viride,2
+1,2,Princess Parrotfish,10,6,5,20,Scarus taeniopterus,2
+1,7,Queen Parrotfish,1,23,NA,NA,Scarus vetula,7
+1,7,Rainbow Parrotfish,1,30,NA,NA,Scarus guacamaia,7
+1,7,Redband Parrotfish,1,20,NA,NA,Sparisoma aurofrenatum,7
+1,14,Four eye Butterflyfish,4,15,10,20,Chaetodon capistratus,14
+1,14,Stoplight Parrotfish,7,14,8,18,Sparisoma viride,14
+1,14,Princess Parrotfish,4,15,8,18,Scarus taeniopterus,14
+1,14,Redband Parrotfish,1,16,NA,NA,Sparisoma aurofrenatum,14
+1,14,Queen Parrotfish,1,24,NA,NA,Scarus vetula,14
