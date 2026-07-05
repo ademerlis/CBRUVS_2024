@@ -2,7 +2,7 @@
 
 This repository contains data and analysis scripts for the manuscript:
 
-## [The secret life of coral predators: Documenting fish corallivory on restored corals in Florida using Coral-Baited Remote Underwater Video Systems (C-BRUVS)]
+## The secret life of coral predators: Documenting fish corallivory on restored corals in Florida using Coral-Baited Remote Underwater Video Systems (C-BRUVS)
 #### **Authors:** Allyson DeMerlis, Erin Weisman, Martine D'Alessandro, Bautista Tobias, Joseph Unsworth, Diego Lirman
 #### **Journal:** _Bulletin of Marine Science_ 
 
